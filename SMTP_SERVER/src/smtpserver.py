@@ -97,7 +97,10 @@ class ConsoleSMTPFactory(smtp.SMTPFactory):
     def buildProtocol(self, addr):
         p = smtp.SMTPFactory.buildProtocol(self, addr)
         p.delivery = self.delivery
-        p.challengers = {"LOGIN": LOGINCredentials, "PLAIN": PLAINCredentials}
+        p.challengers = {
+            b"LOGIN": LOGINCredentials,
+            b"PLAIN": PLAINCredentials
+        }
         return p
 
 
@@ -152,3 +155,9 @@ def main():
 
 if __name__ == '__main__':
     main()
+
+
+
+
+
+
