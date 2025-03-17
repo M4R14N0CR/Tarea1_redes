@@ -36,7 +36,7 @@ class PersonalizedSMTPClient(smtp.ESMTPClient):
         return io.BytesIO(self.message.encode("utf-8"))
 
     def sentMail(self, code, resp, numOk, addresses, log):
-        print("Mensaje enviado a", self.recipient)
+
         self.deferred.callback(True)
 
 
@@ -124,7 +124,7 @@ def main():
 
     # Define el remitente (puedes parametrizarlo si lo deseas)
     sender = "tutorial_sender@example.com"
-    port = 2500  # Puedes parametrizar el puerto si se requiere
+    port = 2525  # Puedes parametrizar el puerto si se requiere
 
     # Carga la lista de destinatarios desde el archivo CSV
     recipients_info = []

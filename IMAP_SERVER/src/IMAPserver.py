@@ -304,7 +304,7 @@ class IMAPFactory(protocol.Factory):
         }
         return server
 
-CSV_PATH = "/home/mariano/Documents/credentials.csv"
+CSV_PATH = "/home/ec2-user/Tarea1_redes/credentials.csv"
 def main():
     parser = argparse.ArgumentParser(
         description="Servidor IMAP que utiliza el mail storage del servidor SMTP.\nEstructura: <mail-storage>/<dominio>/<usuario>/archivo.eml"
