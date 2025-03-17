@@ -71,7 +71,7 @@ class ConsoleMessage:
         # Crea la carpeta (y sus padres) si no existe
         os.makedirs(destination_folder, exist_ok=True)
         # Genera un nombre único para el archivo usando un timestamp
-        filename = "message_{}.txt".format(int(time.time() * 1000))
+        filename = "message_{}.eml".format(int(time.time() * 1000))
         filepath = os.path.join(destination_folder, filename)
         # Guarda el mensaje en el archivo
         with open(filepath, 'w', encoding='utf-8') as f:

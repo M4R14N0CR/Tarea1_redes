@@ -7,6 +7,9 @@ import os
 from twisted.internet import reactor, defer, protocol
 from twisted.mail import smtp
 
+from email.message import EmailMessage
+import email.utils
+
 
 
 # Protocolo personalizado para enviar un mensaje SMTP individualmente
@@ -80,21 +83,27 @@ def parse_arguments():
 @defer.inlineCallbacks
 def send_all_emails(host, port, sender, recipients_info, message_template):
     """
-    Envía un correo personalizado a cada destinatario de la lista.
+    Envía un correo personalizado a cada destinatario de la lista utilizando mensajes en formato MIME.
 
     recipients_info: lista de tuplas (email, name)
-    message_template: cadena con la plantilla del mensaje.
+    message_template: plantilla para el cuerpo del mensaje (se espera usar {name} para personalizar)
     """
     deferreds = []
-    for email, name in recipients_info:
-        # Personaliza el mensaje usando el nombre (puedes usar otro mecanismo de variables si lo prefieres)
-        personalized_message = message_template.format(name=name)
-        print("Enviando correo a:", email)
-        factory = SMTPClientFactory(sender, email, personalized_message)
-        # Conecta al servidor SMTP usando el host y puerto indicado (por defecto 25)
+    for recipient_email, name in recipients_info:
+        # Construye el mensaje MIME
+        msg = EmailMessage()
+        msg['Subject'] = "Correo personalizado"  # Puedes parametrizar el asunto si lo deseas.
+        msg['From'] = sender
+        msg['To'] = recipient_email
+        msg['Date'] = email.utils.formatdate(localtime=True)
+        msg.set_content(message_template.format(name=name))
+        mime_message = msg.as_string()
+
+        print("Enviando correo a:", recipient_email)
+        factory = SMTPClientFactory(sender, recipient_email, mime_message)
         reactor.connectTCP(host, port, factory)
         deferreds.append(factory.deferred)
-        # Puedes agregar un pequeño retardo entre conexiones si lo deseas (opcional)
+        # (Opcional) Puedes agregar un retardo entre conexiones
 
     # Espera a que se completen todos los envíos
     results = yield defer.DeferredList(deferreds, consumeErrors=True)
