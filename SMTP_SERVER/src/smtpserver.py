@@ -10,7 +10,7 @@ from twisted.cred.portal import IRealm
 from twisted.application import internet, service
 from twisted.mail.imap4 import LOGINCredentials, PLAINCredentials
 
-
+    
 
 #Clase que implementa la interfaz IMessageDelivery de Twisted para gestionar la entrega de mensajes
 @implementer(smtp.IMessageDelivery)

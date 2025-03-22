@@ -12,8 +12,15 @@ import email.utils
 
 
 
-# Protocolo personalizado para enviar un mensaje SMTP individualmente
+# Clase que extiende de smtp.ESMTPClient para definir un cliuente SMTP que envia
+# un mensaje de correo individual.
 class PersonalizedSMTPClient(smtp.ESMTPClient):
+
+    # Constructor:
+    # sender: dirección de correo del remitente.
+    # recipient: dirección de correo del destinatario.
+    # message: mensaje (plantilla) a enviar.
+    # *args, **kwargs: argumentos adicionales que se pasan a la clase base.
     def __init__(self, sender, recipient, message, *args, **kwargs):
         smtp.ESMTPClient.__init__(self, secret=None, identity=sender, *args, **kwargs)
         self.sender = sender
@@ -21,55 +28,75 @@ class PersonalizedSMTPClient(smtp.ESMTPClient):
         self.message = message
         self.deferred = defer.Deferred()
 
+    # Método que retorna el remitente del correo.
+    # Se devuelve la dirección y se limpia el atributo para evitar reutilización.
     def getMailFrom(self):
-        # Retorna la dirección del remitente (única vez)
+
         result = self.sender
         self.sender = None
         return result
 
+    # Método que retorna la lista de destinatarios.
     def getMailTo(self):
-        # Retorna una lista con la dirección del destinatario
+
         return [self.recipient]
 
+    # Método que retorna el contenido del mensaje.
+    # Se devuelve un objeto BytesIO conteniendo el mensaje codificado en UTF-8.
     def getMailData(self):
-        # Devuelve el mensaje como un objeto similar a un archivo
+
         return io.BytesIO(self.message.encode("utf-8"))
 
+    # Método llamado cuando el correo se ha enviado exitosamente.
+    # Los parámetros incluyen el código de respuesta, respuesta del servidor, cantidad de direcciones aceptadas,
+    # lista de direcciones y log.
+    # Se marca el Deferred como exitoso.
     def sentMail(self, code, resp, numOk, addresses, log):
 
         self.deferred.callback(True)
 
 
 
-# Factory para el cliente SMTP que crea el protocolo personalizado
+# Clase que extiende de CLientFactory, se encarga de crear instancias de clientes para cada conexion al servidor SMTP.
 class SMTPClientFactory(protocol.ClientFactory):
+
+    # Constructor:
+    # sender: dirección del remitente.
+    # recipient: dirección del destinatario.
+    # message: mensaje a enviar.
     def __init__(self, sender, recipient, message):
         self.sender = sender
         self.recipient = recipient
         self.message = message
         self.deferred = defer.Deferred()
 
+    # Método para construir el protocolo SMTP personalizado para la conexión.
+    # Entrada: addr (dirección del servidor)
+    # Salida: instancia de PersonalizedSMTPClient.
     def buildProtocol(self, addr):
         p = PersonalizedSMTPClient(self.sender, self.recipient, self.message)
-        # Cuando el protocolo complete (éxito o error), se propaga al Deferred del factory.
         p.deferred.addBoth(self._finish)
         return p
 
+    # Método interno para finalizar el proceso, callback compartido.
+    # Se encarga de notificar el Deferred general de la fábrica.
     def _finish(self, result):
         if not self.deferred.called:
             self.deferred.callback(result)
         return result
 
+    # Método llamado si la conexión falla.
+    # Se notifica el Deferred con un error.
     def clientConnectionFailed(self, connector, reason):
         self.deferred.errback(reason)
 
-
+# Función para parsear los argumentos de la línea de comandos.
+# No recibe argumentos y retorna un objeto con los parámetros:
+# - host: Servidor SMTP al que se conectara
+# - csv: Direccion del archivo CSV con los destinatarios
+# - message-file: Archivo con la plantilla del mensaje que se enviara en el correo
 def parse_arguments():
-    """
-    Procesa los argumentos de línea de comandos.
-    Debido a que -h está reservado para help en argparse, se desactiva el help automático y se
-    agrega la opción --help.
-    """
+
     parser = argparse.ArgumentParser(usage="python smtpclient.py -h <mail-server> -c <csv-file> -m <message-file>",
                                      add_help=False)
     parser.add_argument("-h", dest="host", required=True, help="Servidor SMTP al que se conectará")
@@ -79,20 +106,20 @@ def parse_arguments():
     parser.add_argument("--help", action="help", help="Mostrar este mensaje de ayuda y salir")
     return parser.parse_args()
 
-
+#Esta función se encarga de enviar correos electrónicos a todos los destinatarios listados en el CSV de forma asíncrona.
+# host: Dominio del servidor SMTP al que se conectara
+# port: Puerto al que se conectara al servidor
+# sender: El remitente que envia el correo
+# recipients_info: Informacion del usuario destinatario
+# message_template: Plantilla del correo
 @defer.inlineCallbacks
 def send_all_emails(host, port, sender, recipients_info, message_template):
-    """
-    Envía un correo personalizado a cada destinatario de la lista utilizando mensajes en formato MIME.
 
-    recipients_info: lista de tuplas (email, name)
-    message_template: plantilla para el cuerpo del mensaje (se espera usar {name} para personalizar)
-    """
     deferreds = []
     for recipient_email, name in recipients_info:
-        # Construye el mensaje MIME
+
         msg = EmailMessage()
-        msg['Subject'] = "Correo personalizado"  # Puedes parametrizar el asunto si lo deseas.
+        msg['Subject'] = "Correo personalizado"
         msg['From'] = sender
         msg['To'] = recipient_email
         msg['Date'] = email.utils.formatdate(localtime=True)
@@ -103,9 +130,9 @@ def send_all_emails(host, port, sender, recipients_info, message_template):
         factory = SMTPClientFactory(sender, recipient_email, mime_message)
         reactor.connectTCP(host, port, factory)
         deferreds.append(factory.deferred)
-        # (Opcional) Puedes agregar un retardo entre conexiones
 
-    # Espera a que se completen todos los envíos
+
+
     results = yield defer.DeferredList(deferreds, consumeErrors=True)
     for success, result in results:
         if success:
@@ -115,22 +142,22 @@ def send_all_emails(host, port, sender, recipients_info, message_template):
     reactor.stop()
 
 
+# Funcion principal que envia los correos masivamente
 def main():
-    # Procesa los argumentos
     args = parse_arguments()
     host = args.host
     csv_file = args.csv
     message_file = args.message
 
-    # Define el remitente (puedes parametrizarlo si lo deseas)
-    sender = "tutorial_sender@example.com"
-    port = 2525  # Puedes parametrizar el puerto si se requiere
 
-    # Carga la lista de destinatarios desde el archivo CSV
+    sender = "tutorial_sender@example.com"
+    port = 2525
+
+
     recipients_info = []
     with open(csv_file, newline='', encoding='utf-8') as f:
         reader = csv.reader(f)
-        # Se espera que cada línea tenga: correo, nombre
+
         for row in reader:
             if len(row) >= 2:
                 email = row[0].strip()
@@ -141,7 +168,7 @@ def main():
         print("No se encontraron destinatarios en el CSV.")
         return
 
-    # Lee la plantilla del mensaje
+
     if not os.path.exists(message_file):
         print("El archivo de mensaje no existe.")
         return
@@ -149,7 +176,7 @@ def main():
     with open(message_file, 'r', encoding='utf-8') as mf:
         message_template = mf.read()
 
-    # Lanza el envío de todos los correos y arranca el reactor
+
     send_all_emails(host, port, sender, recipients_info, message_template)
     reactor.run()
 
