@@ -90,22 +90,6 @@ class SMTPClientFactory(protocol.ClientFactory):
     def clientConnectionFailed(self, connector, reason):
         self.deferred.errback(reason)
 
-# Función para parsear los argumentos de la línea de comandos.
-# No recibe argumentos y retorna un objeto con los parámetros:
-# - host: Servidor SMTP al que se conectara
-# - csv: Direccion del archivo CSV con los destinatarios
-# - message-file: Archivo con la plantilla del mensaje que se enviara en el correo
-def parse_arguments():
-
-    parser = argparse.ArgumentParser(usage="python smtpclient.py -h <mail-server> -c <csv-file> -m <message-file>",
-                                     add_help=False)
-    parser.add_argument("-h", dest="host", required=True, help="Servidor SMTP al que se conectará")
-    parser.add_argument("-c", dest="csv", required=True, help="Archivo CSV con destinatarios (correo,nombre)")
-    parser.add_argument("-m", dest="message", required=True,
-                        help="Archivo con la plantilla del mensaje (usar {name} para el nombre)")
-    parser.add_argument("--help", action="help", help="Mostrar este mensaje de ayuda y salir")
-    return parser.parse_args()
-
 #Esta función se encarga de enviar correos electrónicos a todos los destinatarios listados en el CSV de forma asíncrona.
 # host: Dominio del servidor SMTP al que se conectara
 # port: Puerto al que se conectara al servidor
@@ -140,6 +124,22 @@ def send_all_emails(host, port, sender, recipients_info, message_template):
         else:
             print("Error en el envío:", result)
     reactor.stop()
+
+# Función para parsear los argumentos de la línea de comandos.
+# No recibe argumentos y retorna un objeto con los parámetros:
+# - host: Servidor SMTP al que se conectara
+# - csv: Direccion del archivo CSV con los destinatarios
+# - message-file: Archivo con la plantilla del mensaje que se enviara en el correo
+def parse_arguments():
+
+    parser = argparse.ArgumentParser(usage="python smtpclient.py -h <mail-server> -c <csv-file> -m <message-file>",
+                                     add_help=False)
+    parser.add_argument("-h", dest="host", required=True, help="Servidor SMTP al que se conectará")
+    parser.add_argument("-c", dest="csv", required=True, help="Archivo CSV con destinatarios (correo,nombre)")
+    parser.add_argument("-m", dest="message", required=True,
+                        help="Archivo con la plantilla del mensaje (usar {name} para el nombre)")
+    parser.add_argument("--help", action="help", help="Mostrar este mensaje de ayuda y salir")
+    return parser.parse_args()
 
 
 # Funcion principal que envia los correos masivamente
